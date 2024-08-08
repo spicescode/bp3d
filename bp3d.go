@@ -143,6 +143,13 @@ func (pv Pivot) String() string {
 
 var startPosition = Pivot{0, 0, 0}
 
+type ProductType int
+
+const (
+	ProductType_Fragile ProductType = iota
+	ProductType_Robust
+)
+
 type Item struct {
 	Name   string
 	Width  float64
@@ -153,6 +160,7 @@ type Item struct {
 	// Used during packer.Pack()
 	RotationType RotationType
 	Position     Pivot
+	ProductType  ProductType
 }
 
 type ItemSlice []*Item
@@ -407,4 +415,19 @@ func (p *Packer) FindFittedBin(i *Item) *Bin {
 		return b
 	}
 	return nil
+}
+
+func MoveFragileItemsToEnd(b *Bin) {
+	var nonFragileItems []*Item
+	var fragileItems []*Item
+
+	for _, item := range b.Items {
+		if item.ProductType == ProductType_Fragile {
+			fragileItems = append(fragileItems, item)
+		} else {
+			nonFragileItems = append(nonFragileItems, item)
+		}
+	}
+
+	b.Items = append(nonFragileItems, fragileItems...)
 }
