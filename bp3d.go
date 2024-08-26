@@ -143,6 +143,21 @@ func (pv Pivot) String() string {
 
 var startPosition = Pivot{0, 0, 0}
 
+type ProductType int
+
+const (
+	ProductType_Fragile ProductType = iota
+	ProductType_Robust
+)
+
+type ProductShape int
+
+const (
+	ProductShape_Rigid ProductShape = iota
+	ProductShape_nonRigid
+	ProductShape_Cylinder
+)
+
 type Item struct {
 	Name   string
 	Width  float64
@@ -153,6 +168,8 @@ type Item struct {
 	// Used during packer.Pack()
 	RotationType RotationType
 	Position     Pivot
+	ProductType  ProductType
+	ProductShape ProductShape
 }
 
 type ItemSlice []*Item
@@ -407,4 +424,40 @@ func (p *Packer) FindFittedBin(i *Item) *Bin {
 		return b
 	}
 	return nil
+}
+
+func MoveFragileItemsToEnd(b *Bin) {
+	var nonFragileItems []*Item
+	var fragileItems []*Item
+
+	for _, item := range b.Items {
+		if item.ProductType == ProductType_Fragile {
+			fragileItems = append(fragileItems, item)
+		} else {
+			nonFragileItems = append(nonFragileItems, item)
+		}
+	}
+
+	b.Items = append(nonFragileItems, fragileItems...)
+}
+
+func PossibilityItemFit(p Packer) {
+	var PossibleBin []*Bin
+	binExists := make(map[*Bin]bool) // Map to track added bins
+	for _, bin := range p.Bins {
+		for _, item := range bin.Items {
+			if item.ProductShape == ProductShape_nonRigid {
+				if !binExists[bin] {
+					PossibleBin = append(PossibleBin, bin)
+					binExists[bin] = true
+				}
+				break // Stop checking items in this bin after finding the first non-rigid item
+			}
+		}
+	}
+
+	// Display PossibleBin list
+	for _, bin := range PossibleBin {
+		fmt.Printf("Bin Name: %s", bin.Name)
+	}
 }
