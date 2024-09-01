@@ -73,29 +73,77 @@ func (b *Bin) GetMaxWeight() float64 {
 // PutItem tries to put item into pivot p of bin b.
 func (b *Bin) PutItem(item *Item, p Pivot) (fit bool) {
 	item.Position = p
-	for i := 0; i < 6; i++ {
-		item.RotationType = RotationType(i)
-		d := item.GetDimension()
-		if b.GetWidth() < p[0]+d[0] || b.GetHeight() < p[1]+d[1] || b.GetDepth() < p[2]+d[2] {
-			continue
-		}
-		fit = true
+	validRotations := b.getValidRotations(item)
 
-		for _, ib := range b.Items {
-			if ib.Intersect(item) {
-				fit = false
-				break
+	bestFit := false
+	var bestRotation RotationType
+	var bestScore float64
+
+	for _, rotation := range validRotations {
+		item.RotationType = rotation
+		d := item.GetDimension()
+
+		// アイテムがバインに収まるか確認
+		if b.GetWidth() >= p[0]+d[0] && b.GetHeight() >= p[1]+d[1] && b.GetDepth() >= p[2]+d[2] {
+			score := b.evaluateOccupancy(item, d)
+
+			// より良いスコアの場合、更新
+			if !bestFit || score > bestScore {
+				bestFit = true
+				bestRotation = rotation
+				bestScore = score
 			}
 		}
-
-		if fit {
-			b.Items = append(b.Items, item)
-		}
-
-		return
 	}
 
-	return
+	// 最適な配置を適用
+	if bestFit {
+		item.RotationType = bestRotation
+		item.Position = p
+		b.Items = append(b.Items, item)
+		return true
+	}
+
+	return false
+}
+
+// アイテムの占有率に基づいてスコアを計算。
+func (b *Bin) evaluateOccupancy(item *Item, d Dimension) float64 {
+	// アイテムの体積
+	volumeItem := d[0] * d[1] * d[2]
+
+	// バイン全体の体積
+	volumeBin := b.GetWidth() * b.GetHeight() * b.GetDepth()
+
+	// 占有率 = アイテムの体積 / バインの体積
+	return volumeItem / volumeBin
+}
+
+func (b *Bin) getValidRotations(item *Item) []RotationType {
+	validRotations := []RotationType{
+		RotationType_WHD, RotationType_HWD, RotationType_HDW,
+		RotationType_DHW, RotationType_DWH, RotationType_WDH,
+	}
+
+	if item.NoFlip {
+		// 天地無用: 高さが上（高さ軸が固定）になる回転タイプのみ許可
+		validRotations = []RotationType{
+			RotationType_WHD, RotationType_WDH,
+		}
+	}
+
+	if item.NoSideLay {
+		// 横積み禁止: 幅が上または奥行が上になる回転タイプを除外
+		var filteredRotations []RotationType
+		for _, rt := range validRotations {
+			if rt == RotationType_WHD || rt == RotationType_DHW {
+				filteredRotations = append(filteredRotations, rt)
+			}
+		}
+		validRotations = filteredRotations
+	}
+
+	return validRotations
 }
 
 func (b *Bin) String() string {
@@ -170,6 +218,8 @@ type Item struct {
 	Position     Pivot
 	ProductType  ProductType
 	ProductShape ProductShape
+	NoFlip       bool // 天地無用
+	NoSideLay    bool // 横積み禁止
 }
 
 type ItemSlice []*Item
