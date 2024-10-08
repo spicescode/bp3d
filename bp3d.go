@@ -72,78 +72,89 @@ func (b *Bin) GetMaxWeight() float64 {
 
 // PutItem tries to put item into pivot p of bin b.
 func (b *Bin) PutItem(item *Item, p Pivot) (fit bool) {
-	item.Position = p
-	validRotations := b.getValidRotations(item)
-
-	bestFit := false
-	var bestRotation RotationType
-	var bestScore float64
-
-	for _, rotation := range validRotations {
-		item.RotationType = rotation
+	for i := 0; i < 6; i++ {
+		item.RotationType = RotationType(i)
 		d := item.GetDimension()
+		if b.GetWidth() < p[0]+d[0] || b.GetHeight() < p[1]+d[1] || b.GetDepth() < p[2]+d[2] {
+			continue
+		}
+		fit = true
 
-		// アイテムがバインに収まるか確認
-		if b.GetWidth() >= p[0]+d[0] && b.GetHeight() >= p[1]+d[1] && b.GetDepth() >= p[2]+d[2] {
-			score := b.evaluateOccupancy(item, d)
-
-			// より良いスコアの場合、更新
-			if !bestFit || score > bestScore {
-				bestFit = true
-				bestRotation = rotation
-				bestScore = score
+		for _, ib := range b.Items {
+			if ib.Intersect(item) {
+				fit = false
+				break
 			}
 		}
-	}
 
-	// 最適な配置を適用
-	if bestFit {
-		item.RotationType = bestRotation
-		item.Position = p
-		b.Items = append(b.Items, item)
-		return true
-	}
-
-	return false
-}
-
-// アイテムの占有率に基づいてスコアを計算。
-func (b *Bin) evaluateOccupancy(item *Item, d Dimension) float64 {
-	// アイテムの体積
-	volumeItem := d[0] * d[1] * d[2]
-
-	// バイン全体の体積
-	volumeBin := b.GetWidth() * b.GetHeight() * b.GetDepth()
-
-	// 占有率 = アイテムの体積 / バインの体積
-	return volumeItem / volumeBin
-}
-
-func (b *Bin) getValidRotations(item *Item) []RotationType {
-	validRotations := []RotationType{
-		RotationType_WHD, RotationType_HWD, RotationType_HDW,
-		RotationType_DHW, RotationType_DWH, RotationType_WDH,
-	}
-
-	if item.NoFlip {
-		// 天地無用: 高さが上（高さ軸が固定）になる回転タイプのみ許可
-		validRotations = []RotationType{
-			RotationType_WHD, RotationType_WDH,
+		if fit {
+			item.Position = Pivot{p[0] + d[0], p[1] + d[1], p[2] + d[2]}
+			b.Items = append(b.Items, item)
 		}
+
+		return
 	}
 
-	if item.NoSideLay {
-		// 横積み禁止: 幅が上または奥行が上になる回転タイプを除外
-		var filteredRotations []RotationType
-		for _, rt := range validRotations {
-			if rt == RotationType_WHD || rt == RotationType_DHW {
-				filteredRotations = append(filteredRotations, rt)
+	return
+}
+
+// PutItem tries to put item into pivot p of bin b.
+func (b *Bin) PutnextItem(item *Item, p Pivot) (fit bool) {
+	for i := 0; i < 6; i++ {
+		item.RotationType = RotationType(i)
+		d := item.GetDimension()
+		if b.GetWidth() > p[0]+d[0] {
+			if b.GetHeight() > d[1] && b.GetDepth() > d[2] {
+				fit = true
+				for _, ib := range b.Items {
+					if ib.Intersect(item) {
+						fit = false
+						break
+					}
+				}
 			}
 		}
-		validRotations = filteredRotations
+		if b.GetHeight() > p[1]+d[1] {
+			if b.GetWidth() > d[0] && b.GetDepth() > d[2] {
+				fit = true
+				for _, ib := range b.Items {
+					if ib.Intersect(item) {
+						fit = false
+						break
+					}
+				}
+			}
+		}
+		if b.GetDepth() > p[2]+d[2] {
+			if b.GetWidth() > d[0] && b.GetHeight() > d[1] {
+				fit = true
+				for _, ib := range b.Items {
+					if ib.Intersect(item) {
+						fit = false
+						break
+					}
+				}
+			}
+		}
+
+		if fit {
+			if b.GetWidth() > p[0]+d[0] {
+				item.Position = Pivot{p[0] + d[0], d[1], d[2]}
+			}
+			if b.GetHeight() > p[1]+d[1] {
+				item.Position = Pivot{d[0], p[1] + d[1], d[2]}
+			}
+			if b.GetDepth() > p[2]+d[2] {
+				item.Position = Pivot{d[0], d[1], p[2] + d[2]}
+			}
+			b.Items = append(b.Items, item)
+		} else {
+			continue
+		}
+		return
 	}
 
-	return validRotations
+	return
 }
 
 func (b *Bin) String() string {
@@ -218,8 +229,6 @@ type Item struct {
 	Position     Pivot
 	ProductType  ProductType
 	ProductShape ProductShape
-	NoFlip       bool // 天地無用
-	NoSideLay    bool // 横積み禁止
 }
 
 type ItemSlice []*Item
@@ -372,7 +381,7 @@ func (p *Packer) Pack() error {
 			continue
 		}
 
-		p.Items = p.packToBin(bin, p.Items)
+		p.Items = p.newPackToBin(bin, p.Items)
 	}
 
 	if len(p.UnfitItems) > 0 {
@@ -391,14 +400,14 @@ func (p *Packer) unfitItem() {
 	p.Items = p.Items[1:]
 }
 
-// packToBin packs items to bin b. Returns unpacked items.
-func (p *Packer) packToBin(b *Bin, items []*Item) (unpacked []*Item) {
+func (p *Packer) newPackToBin(b *Bin, items []*Item) (unpacked []*Item) {
+	// 1つ目のアイテムを箱に入れる
 	if !b.PutItem(items[0], startPosition) {
-
+		// もし箱に入らなければ大きい箱を取得して再試行
 		if b2 := p.getBiggerBinThan(b); b2 != nil {
-			return p.packToBin(b2, items)
+			return p.newPackToBin(b2, items)
 		}
-
+		// 箱が見つからなければ全アイテムを返す
 		return p.Items
 	}
 
@@ -414,23 +423,23 @@ func (p *Packer) packToBin(b *Bin, items []*Item) (unpacked []*Item) {
 				var pv Pivot
 				switch Axis(pt) {
 				case WidthAxis:
-					pv = Pivot{ib.Position[0] + ib.GetWidth(), ib.Position[1], ib.Position[2]}
+					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2]}
 				case HeightAxis:
-					pv = Pivot{ib.Position[0], ib.Position[1] + ib.GetHeight(), ib.Position[2]}
+					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2]}
 				case DepthAxis:
-					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2] + ib.GetDepth()}
+					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2]}
 				}
 
-				if b.PutItem(i, pv) {
+				if b.PutnextItem(i, pv) {
 					fitted = true
 					break lookup
 				}
 			}
 		}
-
+		// もしどこにも配置できなかった場合、unpackedリストに追加
 		if !fitted {
 			for b2 := p.getBiggerBinThan(b); b2 != nil; b2 = p.getBiggerBinThan(b) {
-				left := p.packToBin(b2, append(b2.Items, i))
+				left := p.newPackToBin(b2, append(b2.Items, i))
 				if len(left) == 0 {
 					b = b2
 					fitted = true

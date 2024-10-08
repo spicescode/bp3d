@@ -37,7 +37,7 @@ func TestPack(t *testing.T) {
 					{
 						"Le grande box", 100, 100, 300, 1500,
 						[]*Item{
-							{"Item 1", 150, 50, 50, 20, RotationType_HDW, Pivot{0, 0, 0}},
+							{"Item 1", 150, 50, 50, 20, RotationType_HDW, Pivot{0, 0, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
 						},
 					},
 				},
@@ -63,9 +63,9 @@ func TestPack(t *testing.T) {
 					{
 						"Le petite box", 296, 296, 8, 1000,
 						[]*Item{
-							{"Item 1", 250, 250, 2, 200, RotationType_WHD, Pivot{0, 0, 0}},
-							{"Item 2", 250, 250, 2, 200, RotationType_WHD, Pivot{0, 0, 2}},
-							{"Item 3", 250, 250, 2, 200, RotationType_WHD, Pivot{0, 0, 4}},
+							{"Item 1", 250, 250, 2, 200, RotationType_WHD, Pivot{0, 0, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 2", 250, 250, 2, 200, RotationType_WHD, Pivot{0, 0, 2}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 3", 250, 250, 2, 200, RotationType_WHD, Pivot{0, 0, 4}, ProductType_Robust, ProductShape_Rigid, true, true},
 						},
 					},
 					{
@@ -99,9 +99,9 @@ func TestPack(t *testing.T) {
 					{
 						"Le grande box", 2960, 2960, 80, 10000,
 						[]*Item{
-							{"Item 1", 2500, 2500, 20, 2000, RotationType_WHD, Pivot{0, 0, 0}},
-							{"Item 2", 2500, 2500, 20, 2000, RotationType_WHD, Pivot{0, 0, 20}},
-							{"Item 3", 2500, 2500, 20, 2000, RotationType_WHD, Pivot{0, 0, 40}},
+							{"Item 1", 2500, 2500, 20, 2000, RotationType_WHD, Pivot{0, 0, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 2", 2500, 2500, 20, 2000, RotationType_WHD, Pivot{0, 0, 20}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 3", 2500, 2500, 20, 2000, RotationType_WHD, Pivot{0, 0, 40}, ProductType_Robust, ProductShape_Rigid, true, true},
 						},
 					},
 				},
@@ -133,13 +133,13 @@ func TestPack(t *testing.T) {
 					{
 						"Bin 1", 220, 160, 100, 110,
 						[]*Item{
-							{"Item 7", 100, 100, 30, 10, RotationType_WHD, Pivot{0, 0, 0}},
-							{"Item 6", 100, 100, 30, 10, RotationType_WHD, Pivot{100, 0, 0}},
-							{"Item 2", 100, 20, 30, 10, RotationType_HWD, Pivot{200, 0, 0}},
-							{"Item 3", 20, 100, 30, 10, RotationType_HWD, Pivot{0, 100, 0}},
-							{"Item 4", 100, 20, 30, 10, RotationType_WHD, Pivot{100, 100, 0}},
-							{"Item 5", 100, 20, 30, 10, RotationType_HDW, Pivot{200, 100, 0}},
-							{"Item 1", 20, 100, 30, 10, RotationType_HWD, Pivot{100, 120, 0}},
+							{"Item 7", 100, 100, 30, 10, RotationType_WHD, Pivot{0, 0, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 6", 100, 100, 30, 10, RotationType_WHD, Pivot{100, 0, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 2", 100, 20, 30, 10, RotationType_HWD, Pivot{200, 0, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 3", 20, 100, 30, 10, RotationType_HWD, Pivot{0, 100, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 4", 100, 20, 30, 10, RotationType_WHD, Pivot{100, 100, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 5", 100, 20, 30, 10, RotationType_HDW, Pivot{200, 100, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
+							{"Item 1", 20, 100, 30, 10, RotationType_HWD, Pivot{100, 120, 0}, ProductType_Robust, ProductShape_Rigid, true, true},
 						},
 					},
 				},
