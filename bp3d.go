@@ -72,7 +72,6 @@ func (b *Bin) GetMaxWeight() float64 {
 
 // PutItem tries to put item into pivot p of bin b.
 func (b *Bin) PutItem(item *Item, p Pivot) (fit bool) {
-	item.Position = p
 	for i := 0; i < 6; i++ {
 		item.RotationType = RotationType(i)
 		d := item.GetDimension()
@@ -89,9 +88,69 @@ func (b *Bin) PutItem(item *Item, p Pivot) (fit bool) {
 		}
 
 		if fit {
+			item.Position = Pivot{p[0] + d[0], p[1] + d[1], p[2] + d[2]}
 			b.Items = append(b.Items, item)
 		}
 
+		return
+	}
+
+	return
+}
+
+// PutItem tries to put item into pivot p of bin b.
+func (b *Bin) PutnextItem(item *Item, p Pivot) (fit bool) {
+	for i := 0; i < 6; i++ {
+		item.RotationType = RotationType(i)
+		d := item.GetDimension()
+		if b.GetWidth() > p[0]+d[0] {
+			if b.GetHeight() > d[1] && b.GetDepth() > d[2] {
+				fit = true
+				for _, ib := range b.Items {
+					if ib.Intersect(item) {
+						fit = false
+						break
+					}
+				}
+			}
+		}
+		if b.GetHeight() > p[1]+d[1] {
+			if b.GetWidth() > d[0] && b.GetDepth() > d[2] {
+				fit = true
+				for _, ib := range b.Items {
+					if ib.Intersect(item) {
+						fit = false
+						break
+					}
+				}
+			}
+		}
+		if b.GetDepth() > p[2]+d[2] {
+			if b.GetWidth() > d[0] && b.GetHeight() > d[1] {
+				fit = true
+				for _, ib := range b.Items {
+					if ib.Intersect(item) {
+						fit = false
+						break
+					}
+				}
+			}
+		}
+
+		if fit {
+			if b.GetWidth() > p[0]+d[0] {
+				item.Position = Pivot{p[0] + d[0], d[1], d[2]}
+			}
+			if b.GetHeight() > p[1]+d[1] {
+				item.Position = Pivot{d[0], p[1] + d[1], d[2]}
+			}
+			if b.GetDepth() > p[2]+d[2] {
+				item.Position = Pivot{d[0], d[1], p[2] + d[2]}
+			}
+			b.Items = append(b.Items, item)
+		} else {
+			continue
+		}
 		return
 	}
 
@@ -322,7 +381,7 @@ func (p *Packer) Pack() error {
 			continue
 		}
 
-		p.Items = p.packToBin(bin, p.Items)
+		p.Items = p.newPackToBin(bin, p.Items)
 	}
 
 	if len(p.UnfitItems) > 0 {
@@ -341,14 +400,14 @@ func (p *Packer) unfitItem() {
 	p.Items = p.Items[1:]
 }
 
-// packToBin packs items to bin b. Returns unpacked items.
-func (p *Packer) packToBin(b *Bin, items []*Item) (unpacked []*Item) {
+func (p *Packer) newPackToBin(b *Bin, items []*Item) (unpacked []*Item) {
+	// 1つ目のアイテムを箱に入れる
 	if !b.PutItem(items[0], startPosition) {
-
+		// もし箱に入らなければ大きい箱を取得して再試行
 		if b2 := p.getBiggerBinThan(b); b2 != nil {
-			return p.packToBin(b2, items)
+			return p.newPackToBin(b2, items)
 		}
-
+		// 箱が見つからなければ全アイテムを返す
 		return p.Items
 	}
 
@@ -364,23 +423,23 @@ func (p *Packer) packToBin(b *Bin, items []*Item) (unpacked []*Item) {
 				var pv Pivot
 				switch Axis(pt) {
 				case WidthAxis:
-					pv = Pivot{ib.Position[0] + ib.GetWidth(), ib.Position[1], ib.Position[2]}
+					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2]}
 				case HeightAxis:
-					pv = Pivot{ib.Position[0], ib.Position[1] + ib.GetHeight(), ib.Position[2]}
+					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2]}
 				case DepthAxis:
-					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2] + ib.GetDepth()}
+					pv = Pivot{ib.Position[0], ib.Position[1], ib.Position[2]}
 				}
 
-				if b.PutItem(i, pv) {
+				if b.PutnextItem(i, pv) {
 					fitted = true
 					break lookup
 				}
 			}
 		}
-
+		// もしどこにも配置できなかった場合、unpackedリストに追加
 		if !fitted {
 			for b2 := p.getBiggerBinThan(b); b2 != nil; b2 = p.getBiggerBinThan(b) {
-				left := p.packToBin(b2, append(b2.Items, i))
+				left := p.newPackToBin(b2, append(b2.Items, i))
 				if len(left) == 0 {
 					b = b2
 					fitted = true
